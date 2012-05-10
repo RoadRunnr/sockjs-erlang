@@ -11,6 +11,7 @@
 -export([init/0, start_link/3]).
 -export([maybe_create/3, reply/1, reply/2, received/2]).
 -export([send/2, close/3, info/1]).
+-export([call/2, cast/2, pid/1]).
 
 
 -export([init/1, handle_call/3, handle_info/2, terminate/2, code_change/3,
@@ -94,6 +95,18 @@ reply(SessionPid, Multiple) when is_pid(SessionPid) ->
     gen_server:call(SessionPid, {reply, self(), Multiple}, infinity);
 reply(SessionId, Multiple) ->
     reply(spid(SessionId), Multiple).
+
+-spec call(any(), handle()) -> any().
+call(Call, {?MODULE, {SPid, _}}) ->
+    gen_server:call(SPid, Call).
+
+-spec cast(any(), handle()) -> any.
+cast(Call, {?MODULE, {SPid, _}}) ->
+    gen_server:cast(SPid, Call).
+
+-spec pid(handle()) -> pid().
+pid({?MODULE, {SPid, _}}) ->
+    SPid.
 
 %% --------------------------------------------------------------------------
 
@@ -249,6 +262,21 @@ handle_call({received, Messages}, _From, State = #session{ready_state = open}) -
 handle_call({received, _Data}, _From, State = #session{ready_state = _Any}) ->
     {reply, error, State};
 
+handle_call(Request, From, State = #session{callback = Callback,
+					    state    = UserState,
+					    handle   = Handle}) when is_atom(Callback) ->
+    case erlang:function_exported(Callback, handle_call, 4) of
+	true -> case Callback:handle_call(Request, From, Handle, UserState) of
+		    {noreply, UserState1} ->
+			{noreply, State#session{state = UserState1}};
+		    {reply, Reply, UserState1} ->
+			{reply, Reply, State#session{state = UserState1}};
+		    {stop, Reason, UserState1} ->
+			{stop, Reason, State#session{state = UserState1}}
+		end;
+	_ -> {stop, {odd_request, Request}, State}
+    end;
+
 handle_call(Request, _From, State) ->
     {stop, {odd_request, Request}, State}.
 
@@ -268,6 +296,19 @@ handle_cast({close, Status, Reason},  State = #session{response_pid = RPid}) ->
     end,
     {noreply, State#session{ready_state = closed,
                             close_msg = {Status, Reason}}};
+
+handle_cast(Cast, State = #session{callback = Callback,
+				   state    = UserState,
+				   handle   = Handle}) when is_atom(Callback) ->
+    case erlang:function_exported(Callback, handle_cast, 3) of
+	true -> case Callback:handle_cast(Cast, Handle, UserState) of
+		    {noreply, UserState1} ->
+			{noreply, State#session{state = UserState1}};
+		    {stop, Reason, UserState1} ->
+			{stop, Reason, State#session{state = UserState1}}
+		end;
+	_ -> {stop, {odd_cast, Cast}, State}
+    end;
 
 handle_cast(Cast, State) ->
     {stop, {odd_cast, Cast}, State}.
@@ -291,9 +332,21 @@ handle_info(heartbeat_triggered, State = #session{response_pid = RPid}) when RPi
     RPid ! go,
     {noreply, State#session{heartbeat_tref = triggered}};
 
+handle_info(Info, State = #session{callback = Callback,
+				   state    = UserState,
+				   handle   = Handle}) when is_atom(Callback) ->
+    case erlang:function_exported(Callback, handle_info, 3) of
+	true -> case Callback:handle_info(Info, Handle, UserState) of
+		    {noreply, UserState1} ->
+			{noreply, State#session{state = UserState1}};
+		    {stop, Reason, UserState1} ->
+			{stop, Reason, State#session{state = UserState1}}
+		end;
+	_ -> {stop, {odd_info, Info}, State}
+    end;
+
 handle_info(Info, State) ->
     {stop, {odd_info, Info}, State}.
-
 
 terminate(_, State = #session{id = SessionId}) ->
     ets:delete(?ETS, SessionId),
