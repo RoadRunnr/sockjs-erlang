@@ -59,7 +59,7 @@ valid_ws_request(_Service, Req) ->
     {R1 and R2, Req2, {R1, R2}}.
 
 valid_ws_upgrade(Req) ->
-    case sockjs_http:header('Upgrade', Req) of
+    case sockjs_http:header('upgrade', Req) of
         {undefined, Req2} ->
             {false, Req2};
         {V, Req2} ->
@@ -72,7 +72,7 @@ valid_ws_upgrade(Req) ->
     end.
 
 valid_ws_connection(Req) ->
-    case sockjs_http:header('Connection', Req) of
+    case sockjs_http:header('connection', Req) of
         {undefined, Req2} ->
             {false, Req2};
         {V, Req2} ->
@@ -112,15 +112,19 @@ dispatch_req(#service{prefix = Prefix}, Req) ->
     {Method, Req1} = sockjs_http:method(Req),
     {LongPath, Req2} = sockjs_http:path(Req1),
     {ok, PathRemainder} = strip_prefix(LongPath, Prefix),
+    
+    io:format("Method ~p~n PathRemainder ~p~n Req2 ~p~n", [Method, PathRemainder, Req2]),
     {dispatch(Method, PathRemainder), Req2}.
 
 -spec dispatch(atom(), nonempty_string()) -> dispatch_result().
 dispatch(Method, Path) ->
+
     lists:foldl(
       fun ({Match, MethodFilters}, nomatch) ->
               case Match(Path) of
                   nomatch ->
                       nomatch;
+                  % 770 q3sdnwgh
                   [Server, Session] ->
                       case lists:keyfind(Method, 1, MethodFilters) of
                           false ->
@@ -227,8 +231,8 @@ extract_info(Req) ->
                                               {V, R1}         -> {[{H, V} | Acc], R1}
                                           end
                                   end, {[], Req2},
-                                  ['Referer', 'X-Client-Ip', 'X-Forwarded-For',
-                                   'X-Cluster-Client-Ip', 'Via', 'X-Real-Ip']),
+                                  ['referer', 'x-client-ip', 'x-forwarded-for', 
+                                   'x-cluster-client-ip', 'via', 'x-real-ip']),
     {[{peername, Peer},
       {sockname, Sock},
       {path, Path},

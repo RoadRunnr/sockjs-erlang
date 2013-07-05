@@ -28,7 +28,7 @@ body({cowboy, Req})       -> {ok, Body, Req1} = cowboy_req:body(Req),
 
 -spec body_qs(req()) -> {binary(), req()}.
 body_qs(Req) ->
-    {H, Req1} =  header('Content-Type', Req),
+    {H, Req1} =  header('content-Type', Req),
     case H of
         H when H =:= "text/plain" orelse H =:= "" ->
             body(Req1);
@@ -60,7 +60,7 @@ header(K, {cowboy, Req})->
 
 -spec jsessionid(req()) -> {nonempty_string() | undefined, req()}.
 jsessionid({cowboy, Req}) ->
-    {C, Req2} = cowboy_req:cookie(<<"JSESSIONID">>, Req),
+    {C, Req2} = cowboy_req:cookie(<<"jsessionid">>, Req),
     case C of
         _ when is_binary(C) ->
             {binary_to_list(C), {cowboy, Req2}};
