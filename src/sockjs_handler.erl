@@ -112,8 +112,6 @@ dispatch_req(#service{prefix = Prefix}, Req) ->
     {Method, Req1} = sockjs_http:method(Req),
     {LongPath, Req2} = sockjs_http:path(Req1),
     {ok, PathRemainder} = strip_prefix(LongPath, Prefix),
-    
-    io:format("Method ~p~n PathRemainder ~p~n Req2 ~p~n", [Method, PathRemainder, Req2]),
     {dispatch(Method, PathRemainder), Req2}.
 
 -spec dispatch(atom(), nonempty_string()) -> dispatch_result().
