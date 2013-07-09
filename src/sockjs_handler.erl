@@ -59,7 +59,7 @@ valid_ws_request(_Service, Req) ->
     {R1 and R2, Req2, {R1, R2}}.
 
 valid_ws_upgrade(Req) ->
-    case sockjs_http:header('Upgrade', Req) of
+    case sockjs_http:header('upgrade', Req) of
         {undefined, Req2} ->
             {false, Req2};
         {V, Req2} ->
@@ -72,7 +72,7 @@ valid_ws_upgrade(Req) ->
     end.
 
 valid_ws_connection(Req) ->
-    case sockjs_http:header('Connection', Req) of
+    case sockjs_http:header('connection', Req) of
         {undefined, Req2} ->
             {false, Req2};
         {V, Req2} ->
@@ -116,11 +116,13 @@ dispatch_req(#service{prefix = Prefix}, Req) ->
 
 -spec dispatch(atom(), nonempty_string()) -> dispatch_result().
 dispatch(Method, Path) ->
+
     lists:foldl(
       fun ({Match, MethodFilters}, nomatch) ->
               case Match(Path) of
                   nomatch ->
                       nomatch;
+                  % 770 q3sdnwgh
                   [Server, Session] ->
                       case lists:keyfind(Method, 1, MethodFilters) of
                           false ->
@@ -141,22 +143,22 @@ filters() ->
     OptsFilters = [h_sid, xhr_cors, cache_for, xhr_options_post],
     %% websocket does not actually go via handle_req/3 but we need
     %% something in dispatch/2
-    [{t("/websocket"),               [{'GET',     none, websocket,      []}]},
-     {t("/xhr_send"),                [{'POST',    recv, xhr_send,       [h_sid, xhr_cors]},
-                                      {'OPTIONS', none, options,        OptsFilters}]},
-     {t("/xhr"),                     [{'POST',    send, xhr_polling,    [h_sid, xhr_cors]},
-                                      {'OPTIONS', none, options,        OptsFilters}]},
-     {t("/xhr_streaming"),           [{'POST',    send, xhr_streaming,  [h_sid, xhr_cors]},
-                                      {'OPTIONS', none, options,        OptsFilters}]},
-     {t("/jsonp_send"),              [{'POST',    recv, jsonp_send,     [h_sid]}]},
-     {t("/jsonp"),                   [{'GET',     send, jsonp,          [h_sid, h_no_cache]}]},
-     {t("/eventsource"),             [{'GET',     send, eventsource,    [h_sid, h_no_cache]}]},
-     {t("/htmlfile"),                [{'GET',     send, htmlfile,       [h_sid, h_no_cache]}]},
-     {p("/websocket"),               [{'GET',     none, rawwebsocket,   []}]},
-     {p(""),                         [{'GET',     none, welcome_screen, []}]},
-     {p("/iframe[0-9-.a-z_]*.html"), [{'GET',     none, iframe,         [cache_for]}]},
-     {p("/info"),                    [{'GET',     none, info_test,      [h_no_cache, xhr_cors]},
-                                      {'OPTIONS', none, options,        [h_sid, xhr_cors, cache_for, xhr_options_get]}]}
+    [{t("/websocket"),               [{<<"GET">>,     none, websocket,      []}]},
+     {t("/xhr_send"),                [{<<"POST">>,    recv, xhr_send,       [h_sid, xhr_cors]},
+                                      {<<"OPTIONS">>, none, options,        OptsFilters}]},
+     {t("/xhr"),                     [{<<"POST">>,    send, xhr_polling,    [h_sid, xhr_cors]},
+                                      {<<"OPTIONS">>, none, options,        OptsFilters}]},
+     {t("/xhr_streaming"),           [{<<"POST">>,    send, xhr_streaming,  [h_sid, xhr_cors]},
+                                      {<<"OPTIONS">>, none, options,        OptsFilters}]},
+     {t("/jsonp_send"),              [{<<"POST">>,    recv, jsonp_send,     [h_sid]}]},
+     {t("/jsonp"),                   [{<<"GET">>,     send, jsonp,          [h_sid, h_no_cache]}]},
+     {t("/eventsource"),             [{<<"GET">>,     send, eventsource,    [h_sid, h_no_cache]}]},
+     {t("/htmlfile"),                [{<<"GET">>,     send, htmlfile,       [h_sid, h_no_cache]}]},
+     {p("/websocket"),               [{<<"GET">>,     none, rawwebsocket,   []}]},
+     {p(""),                         [{<<"GET">>,     none, welcome_screen, []}]},
+     {p("/iframe[0-9-.a-z_]*.html"), [{<<"GET">>,     none, iframe,         [cache_for]}]},
+     {p("/info"),                    [{<<"GET">>,     none, info_test,      [h_no_cache, xhr_cors]},
+                                      {<<"OPTIONS">>, none, options,        [h_sid, xhr_cors, cache_for, xhr_options_get]}]}
     ].
 
 p(S) -> fun (Path) -> re(Path, "^" ++ S ++ "[/]?\$") end.
@@ -214,7 +216,7 @@ handle({match, {Type, Action, _Server, Session, Filters}}, Service, Req) ->
 default_logger(_Service, Req, _Type) ->
     {LongPath, Req1} = sockjs_http:path(Req),
     {Method, Req2}   = sockjs_http:method(Req1),
-    io:format("~s ~s~n", [Method, LongPath]),
+    io:format("~p ~p ~n", [Method, LongPath]),
     Req2.
 
 -spec extract_info(req()) -> {info(), req()}.
@@ -228,8 +230,8 @@ extract_info(Req) ->
                                               {V, R1}         -> {[{H, V} | Acc], R1}
                                           end
                                   end, {[], Req2},
-                                  ['Referer', 'X-Client-Ip', 'X-Forwarded-For',
-                                   'X-Cluster-Client-Ip', 'Via', 'X-Real-Ip']),
+                                  ['referer', 'x-client-ip', 'x-forwarded-for', 
+                                   'x-cluster-client-ip', 'via', 'x-real-ip']),
     {[{peername, Peer},
       {sockname, Sock},
       {path, Path},

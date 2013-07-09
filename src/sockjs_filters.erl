@@ -51,7 +51,7 @@ xhr_cors(Req, Headers) ->
                   O         -> O
               end,
     {HeadersH, Req2} = sockjs_http:header(
-                             'Access-Control-Request-Headers', Req1),
+                             'access-control-request-headers', Req1),
     AllowHeaders = case HeadersH of
                        undefined -> [];
                        V         -> [{"Access-Control-Allow-Headers", V}]
