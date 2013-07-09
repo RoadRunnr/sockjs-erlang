@@ -214,8 +214,9 @@ handle({match, {Type, Action, _Server, Session, Filters}}, Service, Req) ->
 
 -spec default_logger(service(), req(), websocket | http) -> req().
 default_logger(_Service, Req, _Type) ->
-    {_LongPath, Req1} = sockjs_http:path(Req),
-    {_Method, Req2}   = sockjs_http:method(Req1),
+    {LongPath, Req1} = sockjs_http:path(Req),
+    {Method, Req2}   = sockjs_http:method(Req1),
+    io:format("~p ~p ~n", [Method, LongPath]),
     Req2.
 
 -spec extract_info(req()) -> {info(), req()}.
